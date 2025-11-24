@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "soc.h": "c",
+        "csr.h": "c"
+    }
+}
