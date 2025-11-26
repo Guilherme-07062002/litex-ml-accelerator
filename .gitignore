@@ -117,8 +117,11 @@ tools/oss-cad-suite*
 build
 build/**
 
-*.d
-
-*.o
 
 *.map
+
+# Garantir que pastas TFL sejam rastreadas pelo git
+!hardware/ip/tflite-micro/
+!hardware/ip/tflite-micro/**
+!hardware/ip/tflm/
+!hardware/ip/tflm/**
