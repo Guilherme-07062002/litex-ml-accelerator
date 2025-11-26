@@ -121,9 +121,10 @@ class BaseSoC(SoCCore):
         SoCCore.__init__(self, platform, int(sys_clk_freq), ident = "LiteX SoC on Colorlight " + board.upper(), **kwargs)
 
         # Leds -------------------------------------------------------------------------------------
-        if with_led_chaser:
-            ledn = platform.request_all("user_led_n")
-            self.leds = LedChaser(pads=ledn, sys_clk_freq=sys_clk_freq)
+        # LED on-board desabilitado para usar GPIO customizada de 8 LEDs
+        # if with_led_chaser:
+        #     ledn = platform.request_all("user_led_n")
+        #     self.leds = LedChaser(pads=ledn, sys_clk_freq=sys_clk_freq)
 
     # SPI Flash --------------------------------------------------------------------------------
         if board == "i5":
@@ -181,6 +182,24 @@ class BaseSoC(SoCCore):
         # Adiciona o Core I2CMaster (Bitbang) e o CSR 'i2c'
         self.submodules.i2c = I2CMaster(pads=platform.request("i2c"))
         self.add_csr("i2c")
+
+        # Configuração dos pinos para 8 LEDs externos (placa de expansão roxa) -------------------
+        # Conector: PMODK (conector direito da placa - P6)
+        # Pinos físicos: R3 M4 L5 J16 N4 L4 P16 J18
+        # Mapeamento: bit0(L1)->R3, bit1(L2)->M4, ..., bit7(L8)->J18
+        # Nota: Conector IDC 2x8, pino 1 = faixa vermelha do flat cable
+        leds_pads = [
+            ("leds_ext", 0, 
+                Pins("pmodk:0 pmodk:1 pmodk:2 pmodk:3 pmodk:4 pmodk:5 pmodk:6 pmodk:7"),
+                IOStandard("LVCMOS33")
+            )
+        ]
+
+        platform.add_extension(leds_pads)
+        
+        # Substitui o controle padrão de LEDs por GPIO de 8 bits para placa de expansão
+        self.submodules.leds = GPIOOut(platform.request("leds_ext"))
+        self.add_csr("leds")
    
 
 # Build --------------------------------------------------------------------------------------------
