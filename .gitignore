@@ -29,6 +29,7 @@ spi-i2c
 
 build
 !.vscode/*
+!hardware/ip/tflm/*.d
 
 # Arquivos de simulação e compilação do Icarus Verilog
 *.vvp
