@@ -202,8 +202,8 @@ static void execute(void)
         
         iteration++;
         
-        // Delay simples (~200ms)
-        for(volatile int i = 0; i < 1000000; i++);
+        // Delay simples (~50ms) - reduzido para melhor visualização
+        for(volatile int i = 0; i < 250000; i++);
         
         // Verifica se há comando do usuário
         if(readchar_nonblock()) {
