@@ -3,7 +3,7 @@ BUILD_DIR?=../build/colorlight_i5
 include $(BUILD_DIR)/software/include/generated/variables.mak
 include $(SOC_DIRECTORY)/software/common.mak
 
-OBJECTS   = crt0.o firmware_lora.o aht10.o lora_rfm95.o
+OBJECTS   = crt0.o firmware.o
 
 all: firmware.bin
 
