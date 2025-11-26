@@ -1,4 +1,4 @@
-BUILD_DIR?=../build/colorlight_i5
+BUILD_DIR?=../../build/colorlight_i5
 
 include $(BUILD_DIR)/software/include/generated/variables.mak
 include $(SOC_DIRECTORY)/software/common.mak
