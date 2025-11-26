@@ -247,6 +247,10 @@ int main(void) {
     help();
     prompt();
 
+    // Execução autônoma após inicialização (requisito da tarefa)
+    // Inicia imediatamente os testes e o loop de inferência/LEDs
+    execute();
+
     while(1) {
         console_service();
     }

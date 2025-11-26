@@ -4,6 +4,8 @@
 
 Este documento descreve a implementação do port do TensorFlow Lite Micro (TFLM) para o ambiente bare-metal RISC-V do SoC LiteX.
 
+Atualização: a árvore atual integra o interpretador real do TFLM (MicroInterpreter) no firmware via `inference.cc`, com `tensor_arena` fixa e operador `FullyConnected` habilitado para o modelo `hello_world` quantizado. A implementação anterior (em `inference.c`) permaneceu no repositório apenas como referência técnica do caminho "minimalista"; o binário oficial utiliza a versão com TFLM.
+
 ## Desafios do Port Completo
 
 A biblioteca TensorFlow Lite Micro oficial possui as seguintes características que dificultam o port completo para ambientes bare-metal extremamente limitados:

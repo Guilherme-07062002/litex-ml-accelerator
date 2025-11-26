@@ -13,7 +13,7 @@ extern "C" {
 void inference_init(void);
 
 // Executa uma inferência com o valor de entrada x (radianos)
-// Retorna o valor de saída (seno de x), normalizado entre 0 e 1
+// Retorna o valor de saída (seno de x), no intervalo [-1, 1]
 float inference_run(float x_value);
 
 // Converte valor de saída do modelo (0.0 a 1.0) para padrão de LEDs (0-255)

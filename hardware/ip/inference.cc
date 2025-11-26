@@ -27,6 +27,12 @@ TfLiteTensor* output = nullptr;
 // Flag de inicialização
 bool is_initialized = false;
 
+// Quantização
+float input_scale = 1.0f;
+int input_zero_point = 0;
+float output_scale = 1.0f;
+int output_zero_point = 0;
+
 }  // namespace
 
 extern "C" {
@@ -75,6 +81,14 @@ void inference_init(void) {
     input = interpreter->input(0);
     output = interpreter->output(0);
     
+    // Parâmetros de quantização
+    input_scale = input->params.scale;
+    input_zero_point = input->params.zero_point;
+    output_scale = output->params.scale;
+    output_zero_point = output->params.zero_point;
+
+    printf("[TFLM] Input type: %d scale=%f zero_point=%d\n", input->type, (double)input_scale, input_zero_point);
+    printf("[TFLM] Output type: %d scale=%f zero_point=%d\n", output->type, (double)output_scale, output_zero_point);
     printf("[TFLM] Input shape: [%d]\n", input->dims->data[1]);
     printf("[TFLM] Output shape: [%d]\n", output->dims->data[1]);
     printf("[TFLM] Modelo pronto para inferencia!\n");
@@ -92,10 +106,27 @@ float inference_run(float x_value) {
         }
     }
     
-    // Define o valor de entrada
-    // O modelo hello_world espera valores normalizados entre 0 e 1
-    // correspondendo a x normalizado (x / (2*PI))
-    input->data.f[0] = x_value;
+    // Normaliza a entrada para [0,1] a partir de [0, 2*pi]
+    const float pi = 3.14159265f;
+    float x_norm = x_value / (2.0f * pi);
+    if (x_norm < 0.0f) x_norm = 0.0f;
+    if (x_norm > 1.0f) x_norm = 1.0f;
+
+    // Ajusta a entrada conforme o tipo do tensor (modelo quantizado int8)
+    if (input->type == kTfLiteInt8) {
+        int32_t q = static_cast<int32_t>(x_norm / input_scale + input_zero_point);
+        if (q > 127) q = 127; else if (q < -128) q = -128;
+        input->data.int8[0] = static_cast<int8_t>(q);
+    } else if (input->type == kTfLiteUInt8) {
+        int32_t q = static_cast<int32_t>(x_norm / input_scale + input_zero_point);
+        if (q > 255) q = 255; else if (q < 0) q = 0;
+        input->data.uint8[0] = static_cast<uint8_t>(q);
+    } else if (input->type == kTfLiteFloat32) {
+        input->data.f[0] = x_norm;
+    } else {
+        printf("[TFLM] Tipo de entrada nao suportado: %d\n", input->type);
+        return 0.0f;
+    }
     
     // Executa a inferência
     TfLiteStatus invoke_status = interpreter->Invoke();
@@ -104,10 +135,22 @@ float inference_run(float x_value) {
         return 0.0f;
     }
     
-    // Obtém o resultado
-    float y_pred = output->data.f[0];
+    // Obtém e dequantiza o resultado se necessário
+    float y;
+    if (output->type == kTfLiteInt8) {
+        int8_t q = output->data.int8[0];
+        y = (static_cast<int32_t>(q) - output_zero_point) * output_scale;
+    } else if (output->type == kTfLiteUInt8) {
+        uint8_t q = output->data.uint8[0];
+        y = (static_cast<int32_t>(q) - output_zero_point) * output_scale;
+    } else if (output->type == kTfLiteFloat32) {
+        y = output->data.f[0];
+    } else {
+        printf("[TFLM] Tipo de saida nao suportado: %d\n", output->type);
+        y = 0.0f;
+    }
     
-    return y_pred;
+    return y;
 }
 
 unsigned char inference_output_to_led_pattern(float output_value) {

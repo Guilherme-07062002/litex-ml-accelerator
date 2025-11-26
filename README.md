@@ -197,7 +197,7 @@ cd ../..
 source hardware/tools/oss-cad-suite/environment
 
 # Gere o SoC com LiteX
-$(which python3) ./hardware/ip/colorlight_i5.py --board i9 --revision 7.2 --build --cpu-type=picorv32 --ecppack-compress
+$(which python3) ./hardware/ip/colorlight_i5.py --board i9 --revision 7.2 --build --cpu-type=vexriscv --ecppack-compress
 ```
 
 Se surgir alguma mensagem do tipo "No module named ...", faça a instalação do módulo faltante no ambiente virtual Python rodando:
@@ -267,22 +267,22 @@ Este comando irá:
 
 ## Mapeamento de Hardware
 
-### LEDs Externos (Placa de Expansão Roxa)
+### LEDs Externos (Placa de Expansão)
 
-O projeto controla 8 LEDs externos conectados ao conector PMODK (P6 - conector direito) da ColorLight i9 através de cabo flat IDC 2x8.
+O projeto controla 8 LEDs externos conectados ao conector CN2 (IDC 2x7) da placa HwIT, via cabo flat.
 
-**Mapeamento bit → LED → Pino físico:**
+**Mapeamento bit → LED → Pino físico (conforme SoC):**
 
 | Bit | LED | Pino FPGA | Sinal CSR |
 |-----|-----|-----------|-----------|
-| 0   | L1  | R3        | leds_ext[0] |
-| 1   | L2  | M4        | leds_ext[1] |
-| 2   | L3  | L5        | leds_ext[2] |
-| 3   | L4  | J16       | leds_ext[3] |
-| 4   | L5  | N4        | leds_ext[4] |
-| 5   | L6  | L4        | leds_ext[5] |
-| 6   | L7  | P16       | leds_ext[6] |
-| 7   | L8  | J18       | leds_ext[7] |
+| 0   | L1  | P17       | leds_ext[0] |
+| 1   | L2  | P18       | leds_ext[1] |
+| 2   | L3  | N18       | leds_ext[2] |
+| 3   | L4  | L20       | leds_ext[3] |
+| 4   | L5  | L18       | leds_ext[4] |
+| 5   | L6  | G20       | leds_ext[5] |
+| 6   | L7  | M18       | leds_ext[6] |
+| 7   | L8  | N17       | leds_ext[7] |
 
 **Nota:** O pino 1 do conector IDC é marcado pela faixa vermelha no cabo flat.
 
@@ -319,3 +319,8 @@ mem_write 0x82001800 0x00
 ```
 
 O endereço `0x82001800` corresponde ao `CSR_LEDS_OUT_ADDR` gerado pelo LiteX.
+
+## Observações sobre TensorFlow Lite Micro
+
+- Esta versão integra o interpretador real do TensorFlow Lite Micro (MicroInterpreter) com `tensor_arena` estática e operador `FullyConnected` para o modelo `hello_world` quantizado.
+- O firmware inicia automaticamente a sequência de testes e o loop de inferência/LEDs após a inicialização (execução autônoma).
