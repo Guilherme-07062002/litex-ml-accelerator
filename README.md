@@ -102,3 +102,71 @@ litex_term /dev/ttyACM0 --kernel hardware/ip/firmware.bin
 Caso ocorra algum erro com relação a porta, tente mudar para "ttyACM1", ou verifique a porta utilizada no momento em que foi colocado o FPGA no dispositivo.
 
 Após executar o comando acima aperte **enter** e digite `reboot`. Automaticamente o FPGA será reiniciado e o programa será executado e mostrado no terminal.
+
+### 6. Executar o modelo TensorFlow Lite Micro
+
+No terminal LiteX (RUNTIME>), digite o comando:
+
+```
+execute
+```
+
+Este comando irá:
+1. Inicializar o modelo hello_world (aproximação de função seno)
+2. Executar testes visuais nos LEDs externos da placa de expansão
+3. Iniciar inferências contínuas com visualização em LED
+
+## Mapeamento de Hardware
+
+### LEDs Externos (Placa de Expansão Roxa)
+
+O projeto controla 8 LEDs externos conectados ao conector PMODK (P6 - conector direito) da ColorLight i9 através de cabo flat IDC 2x8.
+
+**Mapeamento bit → LED → Pino físico:**
+
+| Bit | LED | Pino FPGA | Sinal CSR |
+|-----|-----|-----------|-----------|
+| 0   | L1  | R3        | leds_ext[0] |
+| 1   | L2  | M4        | leds_ext[1] |
+| 2   | L3  | L5        | leds_ext[2] |
+| 3   | L4  | J16       | leds_ext[3] |
+| 4   | L5  | N4        | leds_ext[4] |
+| 5   | L6  | L4        | leds_ext[5] |
+| 6   | L7  | P16       | leds_ext[6] |
+| 7   | L8  | J18       | leds_ext[7] |
+
+**Nota:** O pino 1 do conector IDC é marcado pela faixa vermelha no cabo flat.
+
+### Testes de Validação de LEDs
+
+O comando `execute` realiza 3 testes visuais antes de iniciar as inferências:
+
+1. **Barra Crescente (0x00 → 0xFF)**: Acende LEDs sequencialmente de L1 a L8
+2. **Rotação "Knight Rider"**: LED único se movendo de L1→L8 e L8→L1 (3 ciclos)
+3. **Pisca Todos**: Todos os 8 LEDs piscando juntos (5 vezes)
+
+Se algum LED não acender durante os testes:
+- Verifique as conexões do cabo flat IDC 2x8
+- Confirme que o cabo está conectado ao conector PMODK (P6 - direito)
+- Verifique se a placa de expansão está alimentada corretamente
+- Confirme orientação do cabo (faixa vermelha = pino 1)
+
+### Controle de LEDs via Terminal
+
+Você pode controlar os LEDs manualmente pelo terminal LiteX:
+
+```python
+# Acender LED L1 (bit 0)
+mem_write 0x82001800 0x01
+
+# Acender LEDs L1, L2, L3 (bits 0-2)
+mem_write 0x82001800 0x07
+
+# Acender todos os LEDs
+mem_write 0x82001800 0xFF
+
+# Apagar todos os LEDs
+mem_write 0x82001800 0x00
+```
+
+O endereço `0x82001800` corresponde ao `CSR_LEDS_OUT_ADDR` gerado pelo LiteX.

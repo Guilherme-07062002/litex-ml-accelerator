@@ -98,8 +98,12 @@ static void execute(void)
     // Inicializa o modelo
     inference_init();
     
-    // Teste rápido dos LEDs antes de começar
-    printf("\nTestando LEDs (todos acendem sequencialmente)...\n");
+    // Teste visual dos LEDs externos (placa de expansão roxa)
+    // Mapeamento: bit0→L1(R3), bit1→L2(M4), ..., bit7→L8(J18)
+    printf("\n=== TESTE DE LEDs EXTERNOS (PLACA DE EXPANSAO) ===\n");
+    
+    // Teste 1: Acender sequencialmente (barra crescente)
+    printf("Teste 1: Barra crescente (0x00 -> 0xFF)...\n");
     for(int test_led = 0; test_led <= 8; test_led++) {
         unsigned char test_pattern = 0;
         for(int i = 0; i < test_led; i++) {
@@ -107,9 +111,38 @@ static void execute(void)
         }
         leds_out_write(test_pattern);
         printf("  LEDs acesos: %d/8 (0x%02X)\n", test_led, test_pattern);
-        for(volatile int d = 0; d < 500000; d++);  // Delay curto
+        for(volatile int d = 0; d < 500000; d++);
     }
-    printf("Teste de LEDs completo!\n\n");
+    
+    // Teste 2: Rotação estilo "Knight Rider"
+    printf("Teste 2: Rotacao Knight Rider...\n");
+    for(int cycle = 0; cycle < 3; cycle++) {
+        // Ida (L1 -> L8)
+        for(int pos = 0; pos < 8; pos++) {
+            leds_out_write(1 << pos);
+            printf("  LED %d aceso (0x%02X)\n", pos+1, (1 << pos));
+            for(volatile int d = 0; d < 300000; d++);
+        }
+        // Volta (L8 -> L1)
+        for(int pos = 7; pos >= 0; pos--) {
+            leds_out_write(1 << pos);
+            printf("  LED %d aceso (0x%02X)\n", pos+1, (1 << pos));
+            for(volatile int d = 0; d < 300000; d++);
+        }
+    }
+    
+    // Teste 3: Todos piscando
+    printf("Teste 3: Todos os LEDs piscando...\n");
+    for(int blink = 0; blink < 5; blink++) {
+        leds_out_write(0xFF);
+        printf("  Todos LIGADOS (0xFF)\n");
+        for(volatile int d = 0; d < 400000; d++);
+        leds_out_write(0x00);
+        printf("  Todos DESLIGADOS (0x00)\n");
+        for(volatile int d = 0; d < 400000; d++);
+    }
+    
+    printf("=== TESTE DE LEDs COMPLETO ===\n\n");
     
     printf("Executando inferencias continuas (pressione Ctrl+C para parar)...\n");
     printf("Modelo: hello_world - aproximacao de funcao seno\n\n");
