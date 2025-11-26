@@ -22,8 +22,6 @@ from litex.soc.cores.led import LedChaser
 from litex.build.generic_platform import Subsignal, Pins, IOStandard
 
 from litex.soc.interconnect.csr import *
-from litex.soc.cores.bitbang import I2CMaster
-from litex.soc.cores.spi import SPIMaster
 from litex.soc.cores.gpio import GPIOOut
 
 from litedram.modules import M12L64322A
@@ -145,52 +143,14 @@ class BaseSoC(SoCCore):
                 l2_cache_size = kwargs.get("l2_size", 8192)
             )
 
-        # Configuração dos pinos SPI (para LoRa RFM95) -----------------------------------------------
-        spi_pads = [
-            ("spi", 0,
-                Subsignal("clk",  Pins("G20")),
-                Subsignal("mosi", Pins("L18")),
-                Subsignal("miso", Pins("M18")),
-                Subsignal("cs_n", Pins("N17")),
-                IOStandard("LVCMOS33")
-            ),
-            # RESET separado como GPIO
-            ("lora_reset", 0, Pins("L20"), IOStandard("LVCMOS33"))
-        ]
-
-        platform.add_extension(spi_pads)
-
-        # Adiciona o Core SPI Master e o CSR 'spi'
-        self.spi = SPIMaster(pads=platform.request("spi"), data_width=8, sys_clk_freq=sys_clk_freq, spi_clk_freq=1e6)
-        self.add_csr("spi")
-
-        # Adiciona o Core GPIOOut e o CSR 'lora_reset'
-        self.submodules.lora_reset = GPIOOut(platform.request("lora_reset"))
-        self.add_csr("lora_reset")
-
-        # Configuração dos pinos I2C (para AHT10) ---------------------------------------------------
-        i2c_pads = [
-            ("i2c", 0,
-                Subsignal("scl", Pins("U17")),
-                Subsignal("sda", Pins("U18")),
-                IOStandard("LVCMOS33")
-            )
-        ]
-
-        platform.add_extension(i2c_pads)
-        
-        # Adiciona o Core I2CMaster (Bitbang) e o CSR 'i2c'
-        self.submodules.i2c = I2CMaster(pads=platform.request("i2c"))
-        self.add_csr("i2c")
-
-        # Configuração dos pinos para 8 LEDs externos (placa de expansão roxa) -------------------
-        # Conector: PMODK (conector direito da placa - P6)
-        # Pinos físicos: R3 M4 L5 J16 N4 L4 P16 J18
-        # Mapeamento: bit0(L1)->R3, bit1(L2)->M4, ..., bit7(L8)->J18
-        # Nota: Conector IDC 2x8, pino 1 = faixa vermelha do flat cable
+        # Configuração dos pinos para 8 LEDs externos (placa de expansão) --------------------------
+        # Conector: CN2 (conector IDC 14 pinos da placa HwIT)
+        # Pinos físicos conforme documentação CN2: P17 P18 N18 L20 L18 G20 M18 N17
+        # Mapeamento: bit0(L1)->P17, bit1(L2)->P18, ..., bit7(L8)->N17
+        # Nota: Conector IDC 2x7 (14 pinos), pino 1 = faixa vermelha do flat cable
         leds_pads = [
             ("leds_ext", 0, 
-                Pins("pmodk:0 pmodk:1 pmodk:2 pmodk:3 pmodk:4 pmodk:5 pmodk:6 pmodk:7"),
+                Pins("P17 P18 N18 L20 L18 G20 M18 N17"),
                 IOStandard("LVCMOS33")
             )
         ]

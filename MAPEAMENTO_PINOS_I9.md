@@ -2,48 +2,45 @@
 
 ## Placa de Expansão Externa (8 LEDs)
 
-### Conector PMODK (P6 - Conector Direito)
+### Conector CN2 (Conector IDC 14 pinos)
 
-Este projeto utiliza o conector PMODK da ColorLight i9 para controlar 8 LEDs externos através de uma placa de expansão roxa conectada via cabo flat IDC 2x8 pinos.
+Este projeto utiliza o conector **CN2** da placa HwIT para controlar 8 LEDs externos através de uma placa de expansão conectada via cabo flat IDC 14 pinos (2x7).
 
 ### Tabela de Mapeamento Completo
 
-| Bit CSR | LED Placa | Pino FPGA | Sinal HDL | Função       |
-|---------|-----------|-----------|-----------|--------------|
-| bit 0   | L1        | R3        | pmodk:0   | leds_ext[0]  |
-| bit 1   | L2        | M4        | pmodk:1   | leds_ext[1]  |
-| bit 2   | L3        | L5        | pmodk:2   | leds_ext[2]  |
-| bit 3   | L4        | J16       | pmodk:3   | leds_ext[3]  |
-| bit 4   | L5        | N4        | pmodk:4   | leds_ext[4]  |
-| bit 5   | L6        | L4        | pmodk:5   | leds_ext[5]  |
-| bit 6   | L7        | P16       | pmodk:6   | leds_ext[6]  |
-| bit 7   | L8        | J18       | pmodk:7   | leds_ext[7]  |
+| Bit CSR | LED Placa | Pino FPGA | Posição CN2 | Função       |
+|---------|-----------|-----------|-------------|--------------||
+| bit 0   | L1        | P17       | Pino 4      | leds_ext[0]  |
+| bit 1   | L2        | P18       | Pino 6      | leds_ext[1]  |
+| bit 2   | L3        | N18       | Pino 8      | leds_ext[2]  |
+| bit 3   | L4        | L20       | Pino 10     | leds_ext[3]  |
+| bit 4   | L5        | L18       | Pino 12     | leds_ext[4]  |
+| bit 5   | L6        | G20       | Pino 14     | leds_ext[5]  |
+| bit 6   | L7        | M18       | Pino 11     | leds_ext[6]  |
+| bit 7   | L8        | N17       | Pino 9      | leds_ext[7]  |
 
 ### Especificações Elétricas
 
 - **Padrão de I/O:** LVCMOS33 (3.3V)
-- **Conector:** IDC 2x8 pinos (16 pinos total)
+- **Conector:** CN2 - IDC 14 pinos (2x7)
 - **Cabo:** Flat cable com marcação vermelha no pino 1
 - **Lógica:** Ativa-alta (1 = LED aceso, 0 = LED apagado)
 
-### Pinagem do Conector IDC 2x8
+### Pinagem do Conector CN2 (IDC 14 pinos)
 
-```
-          Pino 1 (faixa vermelha)
-          ↓
-    ┌─────────────────┐
-  1 │ •  •  •  •  •  • │ 2
-  3 │ •  •  •  •  •  • │ 4
-  5 │ •  •  •  •  •  • │ 6
-  7 │ •  •  •  •  •  • │ 8
-  9 │ •  •  •  •  •  • │ 10
- 11 │ •  •  •  •  •  • │ 12
- 13 │ •  •  •  •  •  • │ 14
- 15 │ •  •  •  •  •  • │ 16
-    └─────────────────┘
-```
+Conforme documentação da placa HwIT:
 
-**Nota:** Verifique o schematic da placa de expansão para confirmar o mapeamento específico dos pinos aos LEDs.
+| Pino | Sinal | Pino | Sinal |
+|------|-------|------|-------|
+| 1    | GND   | 2    | 5V    |
+| 3    | 3V3   | 4    | P17   |
+| 5    | T17   | 6    | P18   |
+| 7    | GND   | 8    | N18   |
+| 9    | N17   | 10   | L20   |
+| 11   | M18   | 12   | L18   |
+| 13   | GND   | 14   | G20   |
+
+**Referência:** https://github.com/dvcirilo/colorlight-i9-examples/tree/main/doc
 
 ## Uso no Firmware (C)
 
@@ -124,10 +121,10 @@ mem_write 0x82001800 0x00
 ### Arquivo: `hardware/ip/colorlight_i5.py`
 
 ```python
-# Adicionar extensão de pinos
+# Adicionar extensão de pinos (Conector CN2)
 leds_pads = [
     ("leds_ext", 0, 
-        Pins("pmodk:0 pmodk:1 pmodk:2 pmodk:3 pmodk:4 pmodk:5 pmodk:6 pmodk:7"),
+        Pins("P17 P18 N18 L20 L18 G20 M18 N17"),
         IOStandard("LVCMOS33")
     )
 ]
@@ -143,12 +140,21 @@ self.add_csr("leds")
 O LiteX gera automaticamente as constraints no arquivo `build/colorlight_i5/gateware/colorlight_i5.lpf`:
 
 ```
-LOCATE COMP "leds_ext[0]" SITE "R3";
+LOCATE COMP "leds_ext[0]" SITE "P17";
 IOBUF PORT "leds_ext[0]" IO_TYPE=LVCMOS33;
-LOCATE COMP "leds_ext[1]" SITE "M4";
+LOCATE COMP "leds_ext[1]" SITE "P18";
 IOBUF PORT "leds_ext[1]" IO_TYPE=LVCMOS33;
-...
-LOCATE COMP "leds_ext[7]" SITE "J18";
+LOCATE COMP "leds_ext[2]" SITE "N18";
+IOBUF PORT "leds_ext[2]" IO_TYPE=LVCMOS33;
+LOCATE COMP "leds_ext[3]" SITE "L20";
+IOBUF PORT "leds_ext[3]" IO_TYPE=LVCMOS33;
+LOCATE COMP "leds_ext[4]" SITE "L18";
+IOBUF PORT "leds_ext[4]" IO_TYPE=LVCMOS33;
+LOCATE COMP "leds_ext[5]" SITE "G20";
+IOBUF PORT "leds_ext[5]" IO_TYPE=LVCMOS33;
+LOCATE COMP "leds_ext[6]" SITE "M18";
+IOBUF PORT "leds_ext[6]" IO_TYPE=LVCMOS33;
+LOCATE COMP "leds_ext[7]" SITE "N17";
 IOBUF PORT "leds_ext[7]" IO_TYPE=LVCMOS33;
 ```
 
@@ -163,8 +169,8 @@ IOBUF PORT "leds_ext[7]" IO_TYPE=LVCMOS33;
    - Confirme orientação: faixa vermelha = pino 1
 
 2. **Conector errado**
-   - Certifique-se de estar usando o conector PMODK (P6 - direito)
-   - Não confundir com PMODG, PMODH, PMODI, PMODJ, PMODK ou PMODL
+   - Certifique-se de estar usando o conector **CN2** (IDC 14 pinos)
+   - Não confundir com CN3, CN4 ou CN5
 
 3. **Lógica invertida**
    - Se LEDs acendem ao contrário (1=apaga, 0=acende), modifique:
@@ -176,7 +182,7 @@ IOBUF PORT "leds_ext[7]" IO_TYPE=LVCMOS33;
    - Se LEDs acendem na ordem reversa (L8→L1 em vez de L1→L8):
    ```python
    # Em colorlight_i5.py, inverta a ordem dos pinos:
-   Pins("pmodk:7 pmodk:6 pmodk:5 pmodk:4 pmodk:3 pmodk:2 pmodk:1 pmodk:0")
+   Pins("N17 M18 G20 L18 L20 N18 P18 P17")
    ```
 
 ### Problema: Apenas alguns LEDs funcionam
