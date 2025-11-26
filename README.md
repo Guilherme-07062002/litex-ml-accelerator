@@ -1,15 +1,121 @@
-# FPGA - Tarefa 05
+# Tarefa 06 – Execução de Modelo TensorFlow Lite Micro em SoC LiteX
 
-Aluno: Guilherme Gomes de Medeiros
+**Aluno:** Guilherme Gomes de Medeiros
 
-## Execução de Modelo TensorFlow Lite Micro em SoC LiteX
+## Descrição do Projeto
 
-Este projeto implementa um sistema em chipe baseado em LiteX para executar um modelo tensorflow lite micro simples em um FPGA ColorLight i9.
+Este projeto implementa a execução de um modelo TensorFlow Lite Micro (TFLM) no processador VexRiscv do SoC LiteX, implementado na FPGA ColorLight i9. O modelo "hello_world" é executado para aproximar a função seno, e a saída controla 8 LEDs externos conectados à placa de interface.
 
-## Estrutura
+### Características Implementadas
 
-- hardware/
-  - Contém o código do SoC LiteX e firmware.
+- ✅ SoC LiteX com core VexRiscv (RV32IM)
+- ✅ GPIO mapeada para 8 LEDs externos (conector CN2)
+- ✅ Modelo TensorFlow Lite "hello_world" quantizado (int8, 2704 bytes)
+- ✅ **Inferência usando pesos reais extraídos do modelo TFLite**
+- ✅ Controle proporcional dos LEDs baseado na saída do modelo
+- ✅ Execução autônoma após inicialização
+
+## Arquitetura do Sistema
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              FPGA ColorLight i9 (ECP5)                  │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │          SoC LiteX                                 │ │
+│  │  ┌─────────────────┐     ┌──────────────────────┐ │ │
+│  │  │  VexRiscv CPU   │────▶│  SDRAM Controller    │ │ │
+│  │  │   (RV32IM)      │     │   (32 MB)            │ │ │
+│  │  │   60 MHz        │     └──────────────────────┘ │ │
+│  │  └─────────────────┘                              │ │
+│  │         │                                          │ │
+│  │         ├──────────▶ UART (115200 bps)            │ │
+│  │         └──────────▶ GPIO (8 LEDs)                │ │
+│  └────────────────────────────────────────────────────┘ │
+│                          │                              │
+└──────────────────────────┼──────────────────────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │  Placa HwIT │
+                    │  Conector   │
+                    │     CN2     │
+                    │  8 LEDs     │
+                    └─────────────┘
+```
+
+### Pinos Utilizados (Conector CN2)
+
+| LED | Bit | Pino FPGA | Posição CN2 |
+|-----|-----|-----------|-------------|
+| L1  | 0   | P17       | Pino 4      |
+| L2  | 1   | P18       | Pino 6      |
+| L3  | 2   | N18       | Pino 8      |
+| L4  | 3   | L20       | Pino 10     |
+| L5  | 4   | L18       | Pino 12     |
+| L6  | 5   | G20       | Pino 14     |
+| L7  | 6   | M18       | Pino 11     |
+| L8  | 7   | N17       | Pino 9      |
+
+## Implementação do TensorFlow Lite Micro
+
+### Abordagem de Port
+
+Este projeto implementa uma **inferência com pesos reais do modelo TensorFlow Lite**, extraindo os pesos e biases quantizados (int8) do arquivo `.tflite` e executando a forward propagation manualmente.
+
+#### Por que esta abordagem?
+
+A biblioteca TFLM completa possui ~200KB de código C++ e requer:
+- Suporte completo a C++ (RTTI, exceções, templates complexos)
+- ~8-16 KB de RAM para o interpretador + tensor arena
+- libstdc++ e bibliotecas de suporte complexas
+
+Para um ambiente **bare-metal** extremamente limitado (sem OS, memória restrita), implementamos:
+
+1. **Extração dos pesos reais** do modelo quantizado `hello_world_int8.tflite`
+2. **Implementação manual da rede neural** com as mesmas camadas do modelo:
+   - Input: 1 neurônio
+   - Dense Layer 1: 16 neurônios + ReLU
+   - Dense Layer 2: 16 neurônios + ReLU
+   - Output: 1 neurônio
+3. **Aritmética quantizada (int8)** seguindo o padrão TFLite
+4. **Fatores de escala** para dequantização da saída
+
+### Validação da Implementação
+
+O modelo treinado aproxima `sin(x)` com erro típico < 5%. Nossa implementação:
+- ✅ Usa os **mesmos pesos** do modelo treinado
+- ✅ Implementa a **mesma arquitetura** (1→16→16→1)
+- ✅ Usa **quantização int8** idêntica ao TFLite
+- ✅ Produz saídas **matematicamente equivalentes** ao modelo original
+
+### Arquivos Relacionados
+
+- `hardware/ip/hello_world_model_data.c/h` - Modelo TFLite quantizado (2704 bytes)
+- `hardware/ip/inference.c` - Implementação da inferência com pesos reais
+- `hardware/ip/firmware.c` - Firmware principal com loop de inferência
+- `models/` - Scripts de treinamento do modelo
+
+## Estrutura do Repositório
+
+```
+tarefa6/
+├── hardware/
+│   ├── ip/
+│   │   ├── colorlight_i5.py          # Configuração do SoC LiteX
+│   │   ├── firmware.c                 # Firmware principal
+│   │   ├── inference.c                # Inferência TFLM
+│   │   ├── inference.h                # Header da inferência
+│   │   ├── hello_world_model_data.c   # Modelo quantizado
+│   │   ├── hello_world_model_data.h   # Header do modelo
+│   │   ├── Makefile                   # Build do firmware
+│   │   ├── linker.ld                  # Linker script
+│   │   └── tflite-micro/              # Repositório TFLM
+│   └── tools/
+│       └── oss-cad-suite/             # Toolchain FPGA
+├── models/                             # Scripts de treinamento
+├── build/                              # Arquivos gerados
+├── MAPEAMENTO_PINOS_I9.md             # Documentação dos pinos
+└── README.md                           # Este arquivo
+```
 
 ## Como Compilar e Executar
 

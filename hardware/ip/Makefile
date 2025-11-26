@@ -9,6 +9,11 @@ CXX = $(TRIPLE)-g++
 CXXFLAGS_BASE = $(filter-out -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes,$(CFLAGS))
 CXXFLAGS = $(CXXFLAGS_BASE) -std=c++17 -fno-rtti -fno-exceptions -fno-threadsafe-statics
 
+# Macro para compilar C++
+define compilexx
+	$(CXX) -c $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) $<
+endef
+
 # TensorFlow Lite Micro
 TFLM_DIR = tflite-micro
 TFLM_PORT = tflm
@@ -48,15 +53,17 @@ crt0.o: $(CPU_DIRECTORY)/crt0.S
 	$(compile)
 
 %.o: %.cc
-	$(compile)
+	$(compilexx) -c $(TFLM_INCLUDES) $(TFLM_DEFINES) $< -o $@
 
 %.o: %.cpp
-	$(compile)
+	$(compilexx) -c $(TFLM_INCLUDES) $(TFLM_DEFINES) $< -o $@
 
 %.o: %.S
 	$(assemble)
 
 clean:
 	$(RM) $(OBJECTS) firmware.elf firmware.bin *.d .*~ *~
+	$(RM) $(TFLM_DIR)/tensorflow/lite/**/*.o $(TFLM_DIR)/tensorflow/lite/**/*.d
+	$(RM) $(TFLM_PORT)/*.o $(TFLM_PORT)/*.d
 
 .PHONY: all clean

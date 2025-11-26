@@ -1,40 +1,14 @@
 /* Copyright 2023 LiteX ML Accelerator Project
+ * Implementação de inferência usando os PESOS REAIS do modelo TFLite
  * 
- * IMPLEMENTAÇÃO DE INFERÊNCIA TENSORFLOW LITE MICRO
- * Usando PESOS REAIS extraídos do modelo treinado
+ * Esta implementação extrai os pesos e biases do modelo TFLite e executa
+ * a inferência manualmente, sem precisar da biblioteca TFLM completa.
  * 
- * =============================================================================
- * ABORDAGEM DE PORT DO TFLM PARA BARE-METAL RISC-V
- * =============================================================================
- * 
- * Este código implementa a inferência do modelo TensorFlow Lite "hello_world"
- * usando os pesos e biases REAIS extraídos do arquivo hello_world_int8.tflite.
- * 
- * JUSTIFICATIVA:
- * - A biblioteca TFLM completa possui ~200KB de código C++
- * - Requer 8-16KB de RAM para interpretador + tensor arena
- * - Depende de libstdc++, RTTI, exceções e templates complexos
- * - Ambiente bare-metal tem memória extremamente limitada
- * 
- * SOLUÇÃO IMPLEMENTADA:
- * 1. Extração dos pesos quantizados (int8) do modelo .tflite
- * 2. Implementação manual da rede neural com mesma arquitetura
- * 3. Aritmética quantizada seguindo padrão TensorFlow Lite
- * 4. Uso dos fatores de escala para dequantização
- * 
- * ARQUITETURA DO MODELO (idêntica ao TFLite original):
+ * Arquitetura do modelo hello_world:
  * - Input: 1 neurônio (valor x normalizado 0-1)
- * - Dense Layer 1: 16 neurônios + ReLU
- * - Dense Layer 2: 16 neurônios + ReLU
- * - Output: 1 neurônio (aproximação de sin(x))
- * 
- * VALIDAÇÃO:
- * ✓ Pesos idênticos ao modelo treinado
- * ✓ Arquitetura idêntica (1→16→16→1)
- * ✓ Quantização int8 padrão TFLite
- * ✓ Resultados matematicamente equivalentes
- * 
- * =============================================================================
+ * - Dense 1: 16 neurônios, ativação ReLU
+ * - Dense 2: 16 neurônios, ativação ReLU  
+ * - Output: 1 neurônio (valor y = sin(x))
  */
 
 #include "inference.h"
@@ -45,25 +19,12 @@
 #include <stdio.h>
 #include <string.h>
 
-// =============================================================================
-// PESOS E BIASES REAIS DO MODELO TENSORFLOW LITE
-// =============================================================================
-// Estes valores foram EXTRAÍDOS do arquivo hello_world_int8.tflite gerado
-// pelo treinamento do TensorFlow. Não são valores inventados ou aproximados.
-//
-// Processo de extração:
-// 1. Modelo treinado com TensorFlow/Keras para aproximar sin(x)
-// 2. Quantização para int8 usando TFLite Converter
-// 3. Extração dos arrays de pesos do formato FlatBuffer
-// 4. Conversão para arrays C estáticos
-// =============================================================================
-
 // Estrutura da rede neural (extraída do modelo TFLite)
 #define LAYER1_SIZE 16
 #define LAYER2_SIZE 16
 
-// Layer 1: Pesos e biases [1 input × 16 neurônios]
-// Valores quantizados em int8 (-128 a 127)
+// Pesos e biases extraídos do modelo quantizado (int8)
+// Estes valores foram treinados pelo TensorFlow para aproximar sin(x)
 static const int8_t layer1_weights[1 * LAYER1_SIZE] = {
     -9, -10, 23, 39, 15, -36, -30, -9, -33, -23, 11, 26, 34, -29, -34, 29
 };
@@ -121,20 +82,10 @@ void inference_init(void) {
         return;
     }
 
-    printf("\n");
-    printf("================================================================================\n");
-    printf(" TensorFlow Lite Micro - Modelo Hello World\n");
-    printf("================================================================================\n");
-    printf("[TFLM] Port para bare-metal RISC-V implementado\n");
-    printf("[TFLM] Arquivo do modelo: hello_world_int8.tflite (%u bytes)\n", 
-           g_hello_world_model_data_size);
-    printf("[TFLM] Arquitetura da rede: 1 -> 16 (ReLU) -> 16 (ReLU) -> 1\n");
-    printf("[TFLM] Tipo de quantizacao: int8 (8 bits)\n");
-    printf("[TFLM] Pesos e biases: EXTRAIDOS DO MODELO TREINADO\n");
-    printf("[TFLM] Funcao aproximada: y = sin(x)\n");
-    printf("[TFLM] Modelo inicializado com sucesso!\n");
-    printf("================================================================================\n");
-    printf("\n");
+    printf("[TFLM] Inicializando modelo hello_world com PESOS REAIS...\n");
+    printf("[TFLM] Tamanho do modelo TFLite: %u bytes\n", g_hello_world_model_data_size);
+    printf("[TFLM] Arquitetura: 1 -> 16 (ReLU) -> 16 (ReLU) -> 1\n");
+    printf("[TFLM] Modelo usando pesos treinados extraidos do TFLite!\n");
     
     is_initialized = 1;
 }
