@@ -64,15 +64,18 @@ E continue repetindo o processo até que não haja mais erros do tipo.
 Caso essas dependências já estejam instaladas no sistema global, pode acontecer de o ambiente virtual não conseguir encontrá-las. Nesse caso, você pode tentar instalar as dependências diretamente no ambiente virtual com o comando acima.
 
 ### 3. Compilar o firmware
+
+Compile o firmware
+
 ```sh
-# Compile o firmware
 make -C hardware/ip
 ```
 
 Se houver algum erro, tente executar o comando:
 
+Limpa arquivos de build anteriores
+
 ```sh
-# Limpa arquivos de build anteriores
 make -C hardware/ip clean
 ```
 
@@ -90,10 +93,9 @@ $(which openFPGALoader) -b colorlight-i5 build/colorlight_i5/gateware/colorlight
 
 ### 5. Executar via terminal serial na placa FPGA
 
-Execute o seguinte comando:
+Abra o terminal serial (verifique a porta correta, pode ser ttyACM0 ou ttyACM1)
 
 ```sh
-# Abra o terminal serial (verifique a porta correta, pode ser ttyACM0 ou ttyACM1)
 litex_term /dev/ttyACM0 --kernel hardware/ip/firmware.bin
 ```
 
