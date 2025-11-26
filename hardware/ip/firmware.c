@@ -165,7 +165,7 @@ static void execute(void)
         // Atualiza LEDs - cria efeito de barra proporcional ao valor
         // Os 8 LEDs acendem progressivamente conforme o valor aumenta
         unsigned char led_output = 0;
-        int num_leds_on = (led_pattern * 8) / 256;  // Quantos LEDs acender (0-8)
+        int num_leds_on = (led_pattern * 9) / 256;  // Quantos LEDs acender (0-8)
         
         // Garante que pelo menos tenhamos variação entre 0 e 8 LEDs
         if (num_leds_on > 8) num_leds_on = 8;
