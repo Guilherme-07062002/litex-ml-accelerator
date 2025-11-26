@@ -98,6 +98,19 @@ static void execute(void)
     // Inicializa o modelo
     inference_init();
     
+    // Teste rápido dos LEDs antes de começar
+    printf("\nTestando LEDs (todos acendem sequencialmente)...\n");
+    for(int test_led = 0; test_led <= 8; test_led++) {
+        unsigned char test_pattern = 0;
+        for(int i = 0; i < test_led; i++) {
+            test_pattern |= (1 << i);
+        }
+        leds_out_write(test_pattern);
+        printf("  LEDs acesos: %d/8 (0x%02X)\n", test_led, test_pattern);
+        for(volatile int d = 0; d < 500000; d++);  // Delay curto
+    }
+    printf("Teste de LEDs completo!\n\n");
+    
     printf("Executando inferencias continuas (pressione Ctrl+C para parar)...\n");
     printf("Modelo: hello_world - aproximacao de funcao seno\n\n");
     
@@ -121,6 +134,11 @@ static void execute(void)
         unsigned char led_output = 0;
         int num_leds_on = (led_pattern * 8) / 256;  // Quantos LEDs acender (0-8)
         
+        // Garante que pelo menos tenhamos variação entre 0 e 8 LEDs
+        if (num_leds_on > 8) num_leds_on = 8;
+        
+        // Cria padrão de barra: acende LEDs sequencialmente
+        // Bits 0-7 correspondem aos 8 LEDs
         for(int i = 0; i < num_leds_on; i++) {
             led_output |= (1 << i);
         }
