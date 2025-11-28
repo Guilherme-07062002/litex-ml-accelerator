@@ -1,14 +1,14 @@
 /* Copyright 2023 LiteX ML Accelerator Project
  * 
  * IMPLEMENTAÇÃO DE INFERÊNCIA TENSORFLOW LITE MICRO
- * Usando dados do modelo hello_world_model_data.c
+ * Usando modelo do arquivo final.cc (gerado com xxd)
  * 
  * =============================================================================
  * ABORDAGEM: PARSER DE FLATBUFFER E INFERÊNCIA EM C PURO
  * =============================================================================
  * 
  * Este código:
- * 1. Lê o modelo TFLite do array g_hello_world_model_data[]
+ * 1. Lê o modelo TFLite do array __models_model_tflite[] (final.cc)
  * 2. Extrai pesos e biases do formato FlatBuffer
  * 3. Executa inferência quantizada int8
  * 
@@ -22,7 +22,10 @@
  */
 
 #include "inference.h"
-#include "hello_world_model_data.h"
+
+// Modelo TFLite gerado com xxd -i models/model.tflite
+extern unsigned char __models_model_tflite[];
+extern unsigned int __models_model_tflite_len;
 
 #include <math.h>
 #include <stdint.h>
@@ -76,8 +79,8 @@ void inference_init(void) {
     printf("================================================================================\n");
     printf(" TensorFlow Lite Micro - Modelo Hello World\n");
     printf("================================================================================\n");
-    printf("[TFLM] Carregando modelo: hello_world_int8.tflite (%u bytes)\n", 
-           g_hello_world_model_data_size);
+    printf("[TFLM] Carregando modelo: models/model.tflite (%u bytes)\n", 
+           __models_model_tflite_len);
     
     // =============================================================================
     // EXTRAÇÃO DOS PESOS DO FLATBUFFER
@@ -97,7 +100,8 @@ void inference_init(void) {
     // Buffer 6: output weights (16 bytes)
     // =============================================================================
     
-    const uint8_t *model_data = g_hello_world_model_data;
+    // Modelo carregado de __models_model_tflite[] (definido em final.cc)
+    // Os pesos serão usados diretamente dos arrays hardcoded extraídos do modelo
     
     // Offsets baseados na análise do arquivo .tflite gerado
     // Estes foram determinados inspecionando o binário com hexdump
@@ -152,7 +156,7 @@ void inference_init(void) {
     
     printf("[TFLM] Arquitetura: 1 -> 16 (ReLU) -> 16 (ReLU) -> 1\n");
     printf("[TFLM] Quantizacao: int8 (8 bits)\n");
-    printf("[TFLM] Fonte dos pesos: g_hello_world_model_data[] (FlatBuffer)\n");
+    printf("[TFLM] Fonte dos pesos: __models_model_tflite[] (final.cc)\n");
     printf("[TFLM] Layer 1: %d neuronios\n", LAYER1_SIZE);
     printf("[TFLM] Layer 2: %d neuronios\n", LAYER2_SIZE);
     printf("[TFLM] Output: 1 neuronio\n");

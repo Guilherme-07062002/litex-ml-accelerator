@@ -3,8 +3,8 @@ BUILD_DIR?=../../build/colorlight_i5
 include $(BUILD_DIR)/software/include/generated/variables.mak
 include $(SOC_DIRECTORY)/software/common.mak
 
-# Arquivos objeto - versão C pura
-OBJECTS = crt0.o firmware.o hello_world_model_data.o inference.o
+# Arquivos objeto - versão C pura com modelo do final.cc
+OBJECTS = crt0.o firmware.o inference.o final.o
 
 all: firmware.bin
 
@@ -30,6 +30,9 @@ crt0.o: $(CPU_DIRECTORY)/crt0.S
 	$(assemble)
 
 %.o: %.c
+	$(compile)
+
+%.o: %.cc
 	$(compile)
 
 %.o: %.S
