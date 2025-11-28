@@ -165,10 +165,13 @@ static void execute(void)
         // Atualiza LEDs - cria efeito de barra proporcional ao valor
         // Os 8 LEDs acendem progressivamente conforme o valor aumenta
         unsigned char led_output = 0;
-        int num_leds_on = (led_pattern * 9) / 256;  // Quantos LEDs acender (0-8)
+        int num_leds_on = (led_pattern * 8) / 255;  // Quantos LEDs acender (0-7)
         
         // Garante que pelo menos tenhamos variação entre 0 e 8 LEDs
-        if (num_leds_on > 8) num_leds_on = 8;
+        if (num_leds_on > 7) num_leds_on = 7;
+        
+        // Para valor máximo (255), acende todos os 8 LEDs
+        if (led_pattern >= 250) num_leds_on = 8;
         
         // Cria padrão de barra: acende LEDs sequencialmente
         // Bits 0-7 correspondem aos 8 LEDs
@@ -182,14 +185,14 @@ static void execute(void)
         if (iteration % 10 == 0) {
             // Converte floats para inteiros para evitar dependência de softfloat
             int x_int = (int)(x * 1000);  // x em miliradians
-            int y_pred_int = (int)(y_pred * 10000);  // y_pred com 4 casas decimais
+            int y_pred_int = (int)(y_pred * 1000);  // y_pred com 3 casas decimais
             
-            printf("Iter %4d | x=%d.%03d | y_pred=%s%d.%04d | LEDs=0x%02X (%d/8)\n",
+            printf("Iter %4d | x=%d.%03d | y_pred_raw=%d.%03d | pat=%3d | LEDs=0x%02X (%d/8)\n",
                    iteration, 
                    x_int / 1000, x_int % 1000,
-                   (y_pred >= 0) ? "+" : "-",
-                   (y_pred_int < 0 ? -y_pred_int : y_pred_int) / 10000,
-                   (y_pred_int < 0 ? -y_pred_int : y_pred_int) % 10000,
+                   y_pred_int / 1000, 
+                   (y_pred_int < 0 ? -y_pred_int : y_pred_int) % 1000,
+                   led_pattern,
                    led_output, num_leds_on);
         }
         
