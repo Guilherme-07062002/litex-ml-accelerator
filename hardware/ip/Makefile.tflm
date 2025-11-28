@@ -1,0 +1,125 @@
+BUILD_DIR?=../../build/colorlight_i5
+
+include $(BUILD_DIR)/software/include/generated/variables.mak
+include $(SOC_DIRECTORY)/software/common.mak
+
+# =============================================================================
+# CONFIGURAÇÃO TENSORFLOW LITE MICRO
+# =============================================================================
+
+TFLM_DIR = tflite-micro
+TFLM_SRC = $(TFLM_DIR)/tensorflow/lite
+
+# Includes do TFLite Micro
+TFLM_INCLUDES = \
+	-I$(TFLM_DIR) \
+	-I$(TFLM_SRC)/micro \
+	-I$(TFLM_SRC)/micro/kernels \
+	-I$(TFLM_DIR)/third_party/flatbuffers/include \
+	-I$(TFLM_DIR)/third_party/gemmlowp \
+	-I$(TFLM_DIR)/third_party/ruy
+
+# Arquivos core do TFLite Micro (mínimo necessário)
+TFLM_SRCS = \
+	$(TFLM_SRC)/micro/micro_allocator.cc \
+	$(TFLM_SRC)/micro/micro_interpreter.cc \
+	$(TFLM_SRC)/micro/micro_log.cc \
+	$(TFLM_SRC)/micro/micro_profiler.cc \
+	$(TFLM_SRC)/micro/micro_resource_variable.cc \
+	$(TFLM_SRC)/micro/micro_time.cc \
+	$(TFLM_SRC)/micro/micro_utils.cc \
+	$(TFLM_SRC)/micro/mock_micro_graph.cc \
+	$(TFLM_SRC)/micro/recording_micro_allocator.cc \
+	$(TFLM_SRC)/micro/system_setup.cc \
+	$(TFLM_SRC)/micro/memory_helpers.cc \
+	$(TFLM_SRC)/micro/micro_context.cc \
+	$(TFLM_SRC)/micro/arena_allocator/non_persistent_arena_buffer_allocator.cc \
+	$(TFLM_SRC)/micro/arena_allocator/persistent_arena_buffer_allocator.cc \
+	$(TFLM_SRC)/micro/arena_allocator/recording_single_arena_buffer_allocator.cc \
+	$(TFLM_SRC)/micro/arena_allocator/single_arena_buffer_allocator.cc \
+	$(TFLM_SRC)/micro/memory_planner/greedy_memory_planner.cc \
+	$(TFLM_SRC)/micro/memory_planner/linear_memory_planner.cc \
+	$(TFLM_SRC)/core/api/error_reporter.cc \
+	$(TFLM_SRC)/core/api/flatbuffer_conversions.cc \
+	$(TFLM_SRC)/core/api/op_resolver.cc \
+	$(TFLM_SRC)/core/api/tensor_utils.cc \
+	$(TFLM_SRC)/kernels/kernel_util.cc \
+	$(TFLM_SRC)/schema/schema_utils.cc
+
+# Kernels necessários para o modelo hello_world
+TFLM_KERNEL_SRCS = \
+	$(TFLM_SRC)/micro/kernels/quantize.cc \
+	$(TFLM_SRC)/micro/kernels/dequantize.cc \
+	$(TFLM_SRC)/micro/kernels/fully_connected.cc \
+	$(TFLM_SRC)/micro/kernels/fully_connected_common.cc \
+	$(TFLM_SRC)/micro/kernels/relu.cc \
+	$(TFLM_SRC)/micro/kernels/logistic.cc \
+	$(TFLM_SRC)/micro/kernels/logistic_common.cc \
+	$(TFLM_SRC)/micro/kernels/activations.cc \
+	$(TFLM_SRC)/micro/kernels/activations_common.cc \
+	$(TFLM_SRC)/micro/kernels/softmax.cc \
+	$(TFLM_SRC)/micro/kernels/softmax_common.cc
+
+# Gera lista de objetos
+TFLM_OBJS = $(patsubst %.cc,%.o,$(TFLM_SRCS) $(TFLM_KERNEL_SRCS))
+
+# =============================================================================
+# FLAGS DE COMPILAÇÃO
+# =============================================================================
+
+# Flags específicas para TFLite Micro
+TFLM_CFLAGS = \
+	-DTF_LITE_STATIC_MEMORY \
+	-DTF_LITE_DISABLE_X86_NEON \
+	-DTF_LITE_MCU_DEBUG_LOG \
+	-fno-rtti \
+	-fno-exceptions \
+	-fno-threadsafe-statics \
+	-fno-use-cxa-atexit
+
+# Combina flags
+CXXFLAGS = $(CFLAGS) $(TFLM_INCLUDES) $(TFLM_CFLAGS) -std=c++11
+
+# =============================================================================
+# OBJETOS DO PROJETO
+# =============================================================================
+
+OBJECTS = crt0.o firmware.o inference_tflm.o final.o $(TFLM_OBJS)
+
+all: firmware.bin
+
+# pull in dependency info for *existing* .o files
+-include $(OBJECTS:.o=.d)
+
+%.bin: %.elf
+	$(OBJCOPY) -O binary $< $@
+	chmod -x $@
+
+firmware.elf: $(OBJECTS)
+	$(CXX) $(LDFLAGS) -T linker.ld -N -o $@ \
+		$(OBJECTS) \
+		$(PACKAGES:%=-L$(BUILD_DIR)/software/%) \
+		-Wl,--whole-archive \
+		-Wl,--gc-sections \
+		-Wl,-Map,$@.map \
+		-Wl,--no-whole-archive \
+		$(LIBS:lib%=-l%) -lgcc -lstdc++
+	chmod -x $@
+
+crt0.o: $(CPU_DIRECTORY)/crt0.S
+	$(assemble)
+
+%.o: %.c
+	$(compile)
+
+%.o: %.cc
+	$(CX) -c $(CXXFLAGS) -MD -MP $< -o $@
+
+%.o: %.S
+	$(assemble)
+
+clean:
+	$(RM) $(OBJECTS) firmware.elf firmware.bin *.d .*~ *~
+	find $(TFLM_DIR) -name "*.o" -delete
+
+.PHONY: all clean

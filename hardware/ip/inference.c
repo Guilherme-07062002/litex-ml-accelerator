@@ -100,59 +100,60 @@ void inference_init(void) {
     // Buffer 6: output weights (16 bytes)
     // =============================================================================
     
-    // Modelo carregado de __models_model_tflite[] (definido em final.cc)
-    // Os pesos serão usados diretamente dos arrays hardcoded extraídos do modelo
+    // =============================================================================
+    // EXTRAI PESOS DIRETAMENTE DO BUFFER __models_model_tflite[] (final.cc)
+    // =============================================================================
+    // O modelo TFLite (3024 bytes = 0xBD0) usa formato FlatBuffer
+    // Os tensores quantizados (int8) estão armazenados sequencialmente
+    // próximos ao final do arquivo
     
-    // Offsets baseados na análise do arquivo .tflite gerado
-    // Estes foram determinados inspecionando o binário com hexdump
+    // Força referência ao array para garantir linkagem
+    volatile unsigned char first_byte = __models_model_tflite[0];
+    (void)first_byte;
     
-    // Buffer 6 (offset ~0x780): output bias (1 byte) = 0x0b (decimal 11)
-    // Buffer 5 (offset ~0x740): output weights (16 bytes)
-    // Buffer 4 (offset ~0x640): layer2 weights (256 bytes)
-    // Buffer 3 (offset ~0x5C0): layer2 biases (16 bytes)
-    // Buffer 2 (offset ~0x5A0): layer1 weights (16 bytes)
-    // Buffer 1 (offset ~0x580): layer1 biases (16 bytes)
+    printf("[TFLM] Modelo: %u bytes (magic: 0x%02X%02X%02X%02X)\n", 
+           __models_model_tflite_len,
+           __models_model_tflite[0], __models_model_tflite[1],
+           __models_model_tflite[2], __models_model_tflite[3]);
     
-    // Pesos hardcoded extraídos do modelo (fallback se parser falhar)
-    static const int8_t hardcoded_layer1_weights[] = {
-        -9, -10, 23, 39, 15, -36, -30, -9, -33, -23, 11, 26, 34, -29, -34, 29
-    };
-    static const int8_t hardcoded_layer1_biases[] = {
-        -29, -50, 57, 101, 62, -66, -105, -34, -29, -37, 10, 81, 68, -37, -63, 69
-    };
-    static const int8_t hardcoded_layer2_weights[] = {
-        39, 2, 6, -7, 0, 0, 0, 0, 15, 23, 26, 36, 17, 4, -28, -32,
-        16, -2, 14, -36, 0, 8, 34, 32, 16, 31, 29, 10, -37, 13, -34, 0,
-        -6, 33, 38, -30, 0, 0, 0, 0, 23, -5, 7, -35, -5, -3, -39, 32,
-        -8, 11, 2, 38, 0, 0, 0, 0, 7, 24, 18, 9, 46, -39, -27, 20,
-        9, -22, -10, 18, 0, 0, 0, 0, -5, 11, -34, 28, 11, -1, -6, 19,
-        -15, 22, -27, -34, 0, 0, 0, 0, 9, 12, 38, 33, 11, 7, -33, -40,
-        -21, -34, -27, 14, 0, 0, 0, 0, 11, 38, 35, 5, -30, 5, 36, -1,
-        -64, 17, -8, -4, -15, 17, 12, -11, -32, -13, -14, 7, -27, 9, -37, 20,
-        -39, 9, -3, -13, 0, 0, 0, 0, -27, -22, 32, -5, 15, -29, -42, -30,
-        -38, -55, -27, 38, 0, 0, 0, 0, 0, 29, -27, -26, -30, 2, 6, -7,
-        12, -7, 2, 17, 23, 26, 36, 17, 4, -28, -32, 16, -2, 14, -36, 0,
-        8, 34, 32, 16, 31, 29, 10, -37, 13, -34, 0, -6, 33, 38, -30, 0,
-        0, 0, 0, 23, -5, 7, -35, -5, -3, -39, 32, -8, 11, 2, 38, 0,
-        0, 0, 0, 7, 24, 18, 9, 46, -39, -27, 20, 9, -22, -10, 18, 0,
-        0, 0, 0, -5, 11, -34, 28, 11, -1, -6, 19, -15, 22, -27, -34, 0,
-        0, 0, 0, 9, 12, 38, 33, 11, 7, -33, -40, -21, -34, -27, 14, 0
-    };
-    static const int8_t hardcoded_layer2_biases[] = {
-        18, 88, -122, -36, -66, -127, 71, -29, -56, 30, 5, 37, 33, 14, -49, -42
-    };
-    static const int8_t hardcoded_output_weights[] = {
-        39, 25, -2, 98, 0, 0, 0, 0, 15, 23, 26, 36, 17, 4, -28, -32
-    };
-    static const int8_t hardcoded_output_bias = 11;
+    // Estrutura do modelo (3024 bytes):
+    // - Metadados FlatBuffer: bytes 0x000 - 0x900
+    // - Buffers de dados (pesos): bytes 0x900 - 0xBD0
+    //
+    // Ordem esperada dos tensores (de trás para frente):
+    // 1. dense_4/BiasAdd (1 byte) - último buffer
+    // 2. dense_4/MatMul weights (16 bytes)
+    // 3. dense_3/BiasAdd (16 bytes)
+    // 4. dense_3/MatMul weights (256 bytes = 16x16)
+    // 5. dense_2/BiasAdd (16 bytes)
+    // 6. dense_2/MatMul weights (16 bytes) - primeiro buffer
     
-    // Usa os dados hardcoded (extraídos do modelo)
-    layer1_weights = hardcoded_layer1_weights;
-    layer1_biases = hardcoded_layer1_biases;
-    layer2_weights = hardcoded_layer2_weights;
-    layer2_biases = hardcoded_layer2_biases;
-    output_weights = hardcoded_output_weights;
-    output_bias_ptr = &hardcoded_output_bias;
+    const unsigned int model_len = __models_model_tflite_len;
+    
+    // Offsets dos tensores no FlatBuffer (determinados por análise do binário)
+    // Modelo de 3024 bytes (0xBD0) - tensores no final do arquivo
+    // Total de parâmetros: 16 + 16 + 256 + 16 + 16 + 1 = 321 bytes
+    const int offset_layer1_weights = 0xA8C;  // dense_2/MatMul (16 bytes)
+    const int offset_layer1_biases  = 0xA9C;  // dense_2/BiasAdd (16 bytes)
+    const int offset_layer2_weights = 0xAAC;  // dense_3/MatMul (256 bytes)
+    const int offset_layer2_biases  = 0xBAC;  // dense_3/BiasAdd (16 bytes)
+    const int offset_output_weights = 0xBBC;  // dense_4/MatMul (16 bytes)
+    const int offset_output_bias    = 0xBCC;  // dense_4/BiasAdd (1 byte)
+    
+    // Aponta para os dados no buffer do modelo
+    layer1_weights = (const int8_t*)(__models_model_tflite + offset_layer1_weights);
+    layer1_biases = (const int8_t*)(__models_model_tflite + offset_layer1_biases);
+    layer2_weights = (const int8_t*)(__models_model_tflite + offset_layer2_weights);
+    layer2_biases = (const int8_t*)(__models_model_tflite + offset_layer2_biases);
+    output_weights = (const int8_t*)(__models_model_tflite + offset_output_weights);
+    output_bias_ptr = (const int8_t*)(__models_model_tflite + offset_output_bias);
+    
+    // Debug: mostra primeiros valores para verificação
+    printf("[TFLM] Layer1 W[0-3]: %d %d %d %d\n",
+           layer1_weights[0], layer1_weights[1], layer1_weights[2], layer1_weights[3]);
+    printf("[TFLM] Layer1 B[0-3]: %d %d %d %d\n",
+           layer1_biases[0], layer1_biases[1], layer1_biases[2], layer1_biases[3]);
+    printf("[TFLM] Output bias: %d\n", *output_bias_ptr);
     
     printf("[TFLM] Arquitetura: 1 -> 16 (ReLU) -> 16 (ReLU) -> 1\n");
     printf("[TFLM] Quantizacao: int8 (8 bits)\n");
