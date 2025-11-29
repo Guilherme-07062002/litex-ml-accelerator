@@ -193,29 +193,30 @@ float inference_run(float x_value) {
     // Layer 1: Dense com 16 neurônios + ReLU
     int8_t layer1_output[LAYER1_SIZE];
     for (int i = 0; i < LAYER1_SIZE; i++) {
-        int32_t sum = layer1_biases[i] * 16;  // bias scaling
+        // Reduz ganho para evitar saturação precoce
+        int32_t sum = layer1_biases[i] * 8;   // menor escala de bias
         sum += layer1_weights[i] * x_quantized;
-        sum = sum / 16;  // descale
+        sum = sum / 32;                       // maior divisor (ganho menor)
         layer1_output[i] = relu_int8(sum);
     }
     
     // Layer 2: Dense com 16 neurônios + ReLU
     int8_t layer2_output[LAYER2_SIZE];
     for (int i = 0; i < LAYER2_SIZE; i++) {
-        int32_t sum = layer2_biases[i] * 16;
+        int32_t sum = layer2_biases[i] * 8;
         for (int j = 0; j < LAYER1_SIZE; j++) {
             sum += layer2_weights[i * LAYER1_SIZE + j] * layer1_output[j];
         }
-        sum = sum / 16;
+        sum = sum / 32;
         layer2_output[i] = relu_int8(sum);
     }
     
     // Output layer: Dense com 1 neurônio (sem ativação)
-    int32_t output_sum = (*output_bias_ptr) * 16;
+    int32_t output_sum = (*output_bias_ptr) * 8;
     for (int i = 0; i < LAYER2_SIZE; i++) {
         output_sum += output_weights[i] * layer2_output[i];
     }
-    output_sum = output_sum / 16;
+    output_sum = output_sum / 32;
     int8_t output_quantized = (int8_t)(output_sum > 127 ? 127 : (output_sum < -128 ? -128 : output_sum));
     
     // Dequantiza a saída (int8 -> float)
