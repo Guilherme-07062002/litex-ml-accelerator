@@ -162,12 +162,37 @@ static void execute(void)
         // Converte saída para padrão de LED (0-255)
         unsigned char led_pattern = inference_output_to_led_pattern(y_pred);
         
-        // Atualiza LEDs - cria efeito de barra proporcional ao valor
-        // Os 8 LEDs acendem progressivamente conforme o valor aumenta
+        // Atualiza LEDs - cria efeito de onda senoidal completa (sobe e desce)
+        // Baseado na posição x no ciclo (0 a 2π)
+       
         unsigned char led_output = 0;
-        int num_leds_on = (led_pattern * 9) / 256;  // Quantos LEDs acender (0-8)
+        int num_leds_on;
+
+        // Divide o ciclo 0-2π em 4 quadrantes:
+        // 0→π/2: sobe de 0 a 8 LEDs
+        // π/2→π: desce de 8 a 0 LEDs  
+        // π→3π/2: desce de 0 a -8 (mas mostra 0 a 8 invertido)
+        // 3π/2→2π: sobe de -8 a 0 (mas mostra 8 a 0)
         
-        // Garante que pelo menos tenhamos variação entre 0 e 8 LEDs
+        // Normaliza x para [0, 1] dentro do ciclo 2π
+        float x_normalized = x / (2.0f * pi);
+        
+        if (x_normalized < 0.25f) {
+            // Primeiro quadrante: 0→π/2, sobe de 0 a 8
+            num_leds_on = (int)((x_normalized / 0.25f) * 8.0f);
+        } else if (x_normalized < 0.5f) {
+            // Segundo quadrante: π/2→π, desce de 8 a 0
+            num_leds_on = 8 - (int)(((x_normalized - 0.25f) / 0.25f) * 8.0f);
+        } else if (x_normalized < 0.75f) {
+            // Terceiro quadrante: π→3π/2, volta a subir de 0 a 8
+            num_leds_on = (int)(((x_normalized - 0.5f) / 0.25f) * 8.0f);
+        } else {
+            // Quarto quadrante: 3π/2→2π, desce de 8 a 0
+            num_leds_on = 8 - (int)(((x_normalized - 0.75f) / 0.25f) * 8.0f);
+        }
+        
+        // Garante que esteja no intervalo [0, 8]
+        if (num_leds_on < 0) num_leds_on = 0;
         if (num_leds_on > 8) num_leds_on = 8;
         
         // Cria padrão de barra: acende LEDs sequencialmente
@@ -175,33 +200,36 @@ static void execute(void)
         for(int i = 0; i < num_leds_on; i++) {
             led_output |= (1 << i);
         }
-        
+
         leds_out_write(led_output);
         
         // Exibe informações a cada 10 iterações (~2 segundos)
         if (iteration % 10 == 0) {
             // Converte floats para inteiros para evitar dependência de softfloat
             int x_int = (int)(x * 1000);  // x em miliradians
-            int y_pred_int = (int)(y_pred * 10000);  // y_pred com 4 casas decimais
-            
-            printf("Iter %4d | x=%d.%03d | y_pred=%s%d.%04d | LEDs=0x%02X (%d/8)\n",
-                   iteration, 
+            int y_pred_int = (int)(y_pred * 1000);  // y_pred com 3 casas decimais
+            int normalized_int = (int)(((y_pred + 1.0f) / 2.0f) * 1000); // [0,1] em milésimos
+
+            printf("Iter %4d | x=%d.%03d | y_pred_raw=%d.%03d | norm=%d.%03d | pat=%3u | LEDs=0x%02X (%d/8)\n",
+                   iteration,
                    x_int / 1000, x_int % 1000,
-                   (y_pred >= 0) ? "+" : "-",
-                   (y_pred_int < 0 ? -y_pred_int : y_pred_int) / 10000,
-                   (y_pred_int < 0 ? -y_pred_int : y_pred_int) % 10000,
-                   led_output, num_leds_on);
+                   y_pred_int / 1000,
+                   (y_pred_int < 0 ? -y_pred_int : y_pred_int) % 1000,
+                   normalized_int / 1000,
+                   normalized_int % 1000,
+                   (unsigned)led_pattern,
+                   led_output,
+                   num_leds_on);
         }
         
-        // Incrementa x (cicla de 0 a 2*PI)
+        // Avança entrada e ciclo
         x += x_increment;
         if (x >= 2.0f * pi) {
             x = 0.0f;
             printf("\n--- Ciclo completo (0 a 2*PI) ---\n\n");
         }
-        
         iteration++;
-        
+
         // Delay simples (~50ms) - reduzido para melhor visualização
         for(volatile int i = 0; i < 250000; i++);
         
@@ -246,6 +274,10 @@ int main(void) {
     printf("Hellorld!\n");
     help();
     prompt();
+
+    // Execução autônoma após inicialização (requisito da tarefa)
+    // Inicia imediatamente os testes e o loop de inferência/LEDs
+    execute();
 
     while(1) {
         console_service();

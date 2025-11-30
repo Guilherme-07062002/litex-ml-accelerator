@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "soc.h": "c",
-        "csr.h": "c"
+        "csr.h": "c",
+        "inference.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
