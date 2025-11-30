@@ -139,7 +139,7 @@ O openFPGALoader é uma ferramenta utilizada para carregar arquivos para o FPGA,
 Grave o bitstream na placa FPGA
 
 ```sh
-$(which openFPGALoader) -b colorlight-i5 build/colorlight_i5/gateware/colorlight_i5.bit
+sudo $(which openFPGALoader) -b colorlight-i5 build/colorlight_i5/gateware/colorlight_i5.bit
 ```
 
 ### 5. Executar via terminal serial na placa FPGA
