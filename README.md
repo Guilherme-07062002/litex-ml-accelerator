@@ -6,18 +6,6 @@
 
 Este projeto implementa a execução de um modelo TensorFlow Lite Micro (TFLM) no processador VexRiscv do SoC LiteX, implementado na FPGA ColorLight i9. O modelo "hello_world" é executado para aproximar a função seno, e a saída controla 8 LEDs externos conectados à placa de interface.
 
-## Checklist de Requisitos da Tarefa
-
-| Requisito | Status | Pontos | Implementação |
-|-----------|--------|--------|---------------|
-| **Estrutura do projeto** | ✅ | 5/5 | Repositório organizado, README completo, versionamento Git |
-| **Implementação do SoC** | ✅ | 5/5 | VexRiscv integrado, GPIO para 8 LEDs, bitstream funcional |
-| **Modelo padrão** | ✅ | 5/5 | hello_world quantizado int8, arquivo .tflite incluído |
-| **Port do TFLM** | ✅ | 15/15 | Inferência com pesos reais, aritmética quantizada, documentado |
-| **Firmware FPGA** | ✅ | 15/15 | Inicialização completa, loop de inferência, controle de LEDs |
-| **Demonstração em vídeo** | ⏳ | 5/5 | A ser gravado |
-| **TOTAL** | ✅ | **45/50** | |
-
 ### Características Implementadas
 
 - ✅ **SoC LiteX** com core VexRiscv (RV32IM, 60 MHz)
@@ -35,14 +23,14 @@ Este projeto implementa a execução de um modelo TensorFlow Lite Micro (TFLM) n
 │              FPGA ColorLight i9 (ECP5)                  │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │          SoC LiteX                                 │ │
-│  │  ┌─────────────────┐     ┌──────────────────────┐ │ │
-│  │  │  VexRiscv CPU   │────▶│  SDRAM Controller    │ │ │
-│  │  │   (RV32IM)      │     │   (32 MB)            │ │ │
-│  │  │   60 MHz        │     └──────────────────────┘ │ │
-│  │  └─────────────────┘                              │ │
+│  │  ┌─────────────────┐     ┌──────────────────────┐  │ │
+│  │  │  VexRiscv CPU   │────▶│  SDRAM Controller    │   │ │
+│  │  │   (RV32IM)      │     │   (32 MB)            │  │ │
+│  │  │   60 MHz        │     └──────────────────────┘  │ │
+│  │  └─────────────────┘                               │ │
 │  │         │                                          │ │
-│  │         ├──────────▶ UART (115200 bps)            │ │
-│  │         └──────────▶ GPIO (8 LEDs)                │ │
+│  │         ├──────────▶ UART (115200 bps)             │ │
+│  │         └──────────▶ GPIO (8 LEDs)                 │ │
 │  └────────────────────────────────────────────────────┘ │
 │                          │                              │
 └──────────────────────────┼──────────────────────────────┘
@@ -73,92 +61,6 @@ Este projeto implementa a execução de um modelo TensorFlow Lite Micro (TFLM) n
 ### Abordagem de Port do TFLM
 
 Este projeto implementa um **port do TensorFlow Lite Micro adaptado para bare-metal RISC-V**, usando os **pesos reais** extraídos do modelo treinado.
-
-#### Justificativa Técnica
-
-A biblioteca TFLM oficial completa (~200-300 KB de código C++) é inadequada para ambientes bare-metal extremamente limitados. Nossa implementação:
-
-**Mantém a Essência do TFLM:**
-- ✅ **Modelo real**: Usa o arquivo `hello_world_int8.tflite` (2704 bytes) 
-- ✅ **Pesos treinados**: Todos os 321 parâmetros int8 extraídos do modelo
-- ✅ **Arquitetura original**: 1→16(ReLU)→16(ReLU)→1
-- ✅ **Quantização TFLite**: int8 com fatores de escala padrão
-- ✅ **Resultado equivalente**: Erro < 1% comparado ao TFLite original
-
-**Otimiza para Bare-Metal:**
-- ✅ **Código leve**: ~2 KB vs ~200 KB da biblioteca completa
-- ✅ **RAM mínima**: < 500 bytes vs 8-16 KB do interpretador
-- ✅ **Sem dependências**: C puro, sem libstdc++/RTTI/exceções
-- ✅ **Eficiência**: Inferência otimizada para este modelo específico
-
-#### Implementação
-
-```c
-// 1. Pesos extraídos do modelo TFLite (hello_world_int8.tflite)
-static const int8_t layer1_weights[16] = { /* valores reais */ };
-static const int8_t layer1_biases[16] = { /* valores reais */ };
-// ... (321 parâmetros totais)
-
-// 2. Forward propagation com quantização int8 (padrão TFLite)
-void inference_run(float x) {
-    // Quantiza entrada
-    int8_t x_q = quantize(x);
-    
-    // Layer 1: Dense(16) + ReLU
-    for (i=0; i<16; i++)
-        layer1[i] = ReLU(layer1_weights[i] * x_q + layer1_biases[i]);
-    
-    // Layer 2: Dense(16) + ReLU
-    // ... (idêntico ao TFLite)
-    
-    // Output: Dense(1)
-    // ... (idêntico ao TFLite)
-    
-    // Dequantiza saída
-    return dequantize(output_q);
-}
-```
-
-#### Validação
-
-| Entrada | TFLite Real | Nossa Impl. | Erro |
-|---------|-------------|-------------|------|
-| 0.0     | 0.000       | 0.000       | 0%   |
-| π/2     | 1.000       | 0.992       | 0.8% |
-| π       | 0.000       | -0.008      | 0.8% |
-| 3π/2    | -1.000      | -0.992      | 0.8% |
-
-📄 **Documentação detalhada**: Ver [PORT_TFLM.md](PORT_TFLM.md)
-
-### Arquivos Relacionados
-
-- `hardware/ip/hello_world_model_data.c/h` - Modelo TFLite quantizado (2704 bytes)
-- `hardware/ip/inference.c` - Implementação da inferência com pesos reais
-- `hardware/ip/firmware.c` - Firmware principal com loop de inferência
-- `models/` - Scripts de treinamento do modelo
-
-## Estrutura do Repositório
-
-```
-tarefa6/
-├── hardware/
-│   ├── ip/
-│   │   ├── colorlight_i5.py          # Configuração do SoC LiteX
-│   │   ├── firmware.c                 # Firmware principal
-│   │   ├── inference.c                # Inferência TFLM
-│   │   ├── inference.h                # Header da inferência
-│   │   ├── hello_world_model_data.c   # Modelo quantizado
-│   │   ├── hello_world_model_data.h   # Header do modelo
-│   │   ├── Makefile                   # Build do firmware
-│   │   ├── linker.ld                  # Linker script
-│   │   └── tflite-micro/              # Repositório TFLM
-│   └── tools/
-│       └── oss-cad-suite/             # Toolchain FPGA
-├── models/                             # Scripts de treinamento
-├── build/                              # Arquivos gerados
-├── MAPEAMENTO_PINOS_I9.md             # Documentação dos pinos
-└── README.md                           # Este arquivo
-```
 
 ## Como Compilar e Executar
 
@@ -228,7 +130,7 @@ Limpa arquivos de build anteriores
 make -C hardware/ip clean
 ```
 
-E tente novamente.
+E tente novamente o comando de compilação do firmware.
 
 ### 4. Gravar o bitstream e o firmware na placa
 
@@ -250,20 +152,7 @@ litex_term /dev/ttyACM0 --kernel hardware/ip/firmware.bin
 
 Caso ocorra algum erro com relação a porta, tente mudar para "ttyACM1", ou verifique a porta utilizada no momento em que foi colocado o FPGA no dispositivo.
 
-Após executar o comando acima aperte **enter** e digite `reboot`. Automaticamente o FPGA será reiniciado e o programa será executado e mostrado no terminal.
-
-### 6. Executar o modelo TensorFlow Lite Micro
-
-No terminal LiteX (RUNTIME>), digite o comando:
-
-```
-execute
-```
-
-Este comando irá:
-1. Inicializar o modelo hello_world (aproximação de função seno)
-2. Executar testes visuais nos LEDs externos da placa de expansão
-3. Iniciar inferências contínuas com visualização em LED
+Após executar o comando acima aperte **enter** e digite `reboot`. Automaticamente o FPGA será reiniciado e o programa será executado.
 
 ## Mapeamento de Hardware
 
@@ -273,8 +162,8 @@ O projeto controla 8 LEDs externos conectados ao conector CN2 (IDC 2x7) da placa
 
 **Mapeamento bit → LED → Pino físico (conforme SoC):**
 
-| Bit | LED | Pino FPGA | Sinal CSR |
-|-----|-----|-----------|-----------|
+| Bit | LED | Pino FPGA | Sinal CSR   |
+|-----|-----|-----------|-------------|
 | 0   | L1  | P17       | leds_ext[0] |
 | 1   | L2  | P18       | leds_ext[1] |
 | 2   | L3  | N18       | leds_ext[2] |
@@ -284,11 +173,9 @@ O projeto controla 8 LEDs externos conectados ao conector CN2 (IDC 2x7) da placa
 | 6   | L7  | M18       | leds_ext[6] |
 | 7   | L8  | N17       | leds_ext[7] |
 
-**Nota:** O pino 1 do conector IDC é marcado pela faixa vermelha no cabo flat.
-
 ### Testes de Validação de LEDs
 
-O comando `execute` realiza 3 testes visuais antes de iniciar as inferências:
+Antes da execução das inferências no modelo, a FPGA realiza 3 testes visuais:
 
 1. **Barra Crescente (0x00 → 0xFF)**: Acende LEDs sequencialmente de L1 a L8
 2. **Rotação "Knight Rider"**: LED único se movendo de L1→L8 e L8→L1 (3 ciclos)
@@ -299,28 +186,3 @@ Se algum LED não acender durante os testes:
 - Confirme que o cabo está conectado ao conector PMODK (P6 - direito)
 - Verifique se a placa de expansão está alimentada corretamente
 - Confirme orientação do cabo (faixa vermelha = pino 1)
-
-### Controle de LEDs via Terminal
-
-Você pode controlar os LEDs manualmente pelo terminal LiteX:
-
-```python
-# Acender LED L1 (bit 0)
-mem_write 0x82001800 0x01
-
-# Acender LEDs L1, L2, L3 (bits 0-2)
-mem_write 0x82001800 0x07
-
-# Acender todos os LEDs
-mem_write 0x82001800 0xFF
-
-# Apagar todos os LEDs
-mem_write 0x82001800 0x00
-```
-
-O endereço `0x82001800` corresponde ao `CSR_LEDS_OUT_ADDR` gerado pelo LiteX.
-
-## Observações sobre TensorFlow Lite Micro
-
-- Esta versão integra o interpretador real do TensorFlow Lite Micro (MicroInterpreter) com `tensor_arena` estática e operador `FullyConnected` para o modelo `hello_world` quantizado.
-- O firmware inicia automaticamente a sequência de testes e o loop de inferência/LEDs após a inicialização (execução autônoma).
